@@ -36,7 +36,7 @@ class PlanWindow:
         self.db = BacDatabase(str(DATABASE_FILE))
 
         # ----------------------------------------------------
-        # English interface
+        # Window
         # ----------------------------------------------------
 
         self.window.setWindowTitle("Bac Planner")
@@ -47,12 +47,13 @@ class PlanWindow:
 
         # Buttons
         self.window.af.setText("Refresh")
+        self.window.updateStatusButton.setText("Update Status")
 
-        # The Add button is no longer needed
+        # Old Add button not needed
         self.window.aj.hide()
 
         # ----------------------------------------------------
-        # Table headers
+        # Table
         # ----------------------------------------------------
 
         self.window.t1.setHorizontalHeaderLabels([
@@ -65,7 +66,7 @@ class PlanWindow:
         # ----------------------------------------------------
 
         self.statuses = [
-            "🔴 To Do",
+            "⚪ Not Started",
             "🟡 In Progress",
             "🟢 Completed",
             "🔵 Review"
@@ -84,16 +85,32 @@ class PlanWindow:
         # Connections
         # ----------------------------------------------------
 
-        self.window.af.clicked.connect(self.afficher)
+        self.window.af.clicked.connect(
+            self.afficher
+        )
 
         self.window.cb.currentIndexChanged.connect(
-            self.afficher
+            self.subject_changed
+        )
+
+        self.window.cr.currentIndexChanged.connect(
+            self.cours_selectionne
+        )
+
+        # IMPORTANT:
+        # Status selector should NOT automatically update
+        # the database when changed.
+        #
+        # The user must press "Update Status".
+        self.window.updateStatusButton.clicked.connect(
+            self.update_status
         )
 
         # ----------------------------------------------------
         # Initial display
         # ----------------------------------------------------
 
+        self.charger_cours()
         self.afficher()
 
     # ========================================================
@@ -114,6 +131,162 @@ class PlanWindow:
             )
 
     # ========================================================
+    # LOAD LESSONS
+    # ========================================================
+
+    def charger_cours(self):
+
+        subject = self.window.cb.currentText().strip()
+
+        self.window.cr.blockSignals(True)
+        self.window.cr.clear()
+
+        if not subject:
+
+            self.window.cr.blockSignals(False)
+            return
+
+        try:
+
+            lessons = self.db.get_lessons_by_subject(
+                subject
+            )
+
+            for lesson, status in lessons:
+
+                self.window.cr.addItem(
+                    lesson,
+                    status
+                )
+
+        except sqlite3.Error as error:
+
+            QMessageBox.critical(
+                self.window,
+                "Database Error",
+                f"Unable to load lessons.\n\n{error}"
+            )
+
+        self.window.cr.blockSignals(False)
+
+        # Display the status of the first lesson
+        self.cours_selectionne()
+
+    # ========================================================
+    # SUBJECT CHANGED
+    # ========================================================
+
+    def subject_changed(self):
+
+        self.charger_cours()
+        self.afficher()
+
+    # ========================================================
+    # LESSON SELECTED
+    # ========================================================
+
+    def cours_selectionne(self):
+
+        index = self.window.cr.currentIndex()
+
+        if index < 0:
+            return
+
+        status = self.window.cr.itemData(index)
+
+        if not status:
+            status = "⚪ Not Started"
+
+        status_index = self.window.cb2.findText(
+            status
+        )
+
+        if status_index >= 0:
+
+            self.window.cb2.blockSignals(True)
+
+            self.window.cb2.setCurrentIndex(
+                status_index
+            )
+
+            self.window.cb2.blockSignals(False)
+
+    # ========================================================
+    # UPDATE STATUS
+    # ========================================================
+
+    def update_status(self):
+
+        subject = self.window.cb.currentText().strip()
+
+        lesson = self.window.cr.currentText().strip()
+
+        status = self.window.cb2.currentText()
+
+        # Check subject
+        if not subject:
+
+            QMessageBox.warning(
+                self.window,
+                "Missing Subject",
+                "Please select a subject."
+            )
+
+            return
+
+        # Check lesson
+        if not lesson:
+
+            QMessageBox.warning(
+                self.window,
+                "Missing Lesson",
+                "Please select a lesson."
+            )
+
+            return
+
+        # Update database
+        try:
+
+            self.db.update_lesson_status(
+                subject,
+                lesson,
+                status
+            )
+
+        except sqlite3.Error as error:
+
+            QMessageBox.critical(
+                self.window,
+                "Database Error",
+                f"Unable to update status.\n\n{error}"
+            )
+
+            return
+
+        # Update the status stored in the lesson combo box
+        index = self.window.cr.currentIndex()
+
+        if index >= 0:
+
+            self.window.cr.setItemData(
+                index,
+                status
+            )
+
+        # Refresh table
+        self.afficher()
+
+        # Confirmation
+        QMessageBox.information(
+            self.window,
+            "Status Updated",
+            f"Status updated successfully!\n\n"
+            f"Lesson: {lesson}\n"
+            f"Status: {status}"
+        )
+
+    # ========================================================
     # DISPLAY LESSONS
     # ========================================================
 
@@ -121,7 +294,6 @@ class PlanWindow:
 
         subject = self.window.cb.currentText().strip()
 
-        # Clear table
         self.window.t1.setRowCount(0)
 
         if not subject:
@@ -163,10 +335,12 @@ class PlanWindow:
                 QTableWidgetItem(status)
             )
 
+        # ----------------------------------------------------
         # Resize columns
+        # ----------------------------------------------------
+
         self.window.t1.resizeColumnsToContents()
 
-        # Give lesson column more space
         self.window.t1.setColumnWidth(
             0,
             max(
@@ -180,6 +354,7 @@ class PlanWindow:
     # ========================================================
 
     def show(self):
+
         self.window.show()
 
 
@@ -203,4 +378,5 @@ def main():
 # ============================================================
 
 if __name__ == "__main__":
+
     main()

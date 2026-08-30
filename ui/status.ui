@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>StatusWindow</class>
+
+ <widget class="QMainWindow" name="StatusWindow">
+
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1200</width>
+    <height>800</height>
+   </rect>
+  </property>
+
+  <property name="windowTitle">
+   <string>Bac Planner - Status</string>
+  </property>
+
+  <widget class="QWidget" name="centralwidget">
+
+   <!-- ===================================================== -->
+   <!-- TITLE -->
+   <!-- ===================================================== -->
+
+   <widget class="QLabel" name="title">
+    <property name="geometry">
+     <rect>
+      <x>400</x>
+      <y>30</y>
+      <width>400</width>
+      <height>70</height>
+     </rect>
+    </property>
+
+    <property name="text">
+     <string>Status Overview</string>
+    </property>
+
+    <property name="styleSheet">
+     <string notr="true">
+font: 28pt "MS Shell Dlg 2";
+font-weight: bold;
+color: rgb(0, 170, 255);
+     </string>
+    </property>
+
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+
+
+   <!-- ===================================================== -->
+   <!-- STATUS FILTER -->
+   <!-- ===================================================== -->
+
+   <widget class="QLabel" name="statusLabel">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>130</y>
+      <width>150</width>
+      <height>50</height>
+     </rect>
+    </property>
+
+    <property name="text">
+     <string>Status:</string>
+    </property>
+
+    <property name="styleSheet">
+     <string notr="true">
+font: 20pt "MS Shell Dlg 2";
+     </string>
+    </property>
+
+    <property name="alignment">
+     <set>Qt::AlignVCenter</set>
+    </property>
+   </widget>
+
+
+   <widget class="QComboBox" name="statusFilter">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>130</y>
+      <width>280</width>
+      <height>50</height>
+     </rect>
+    </property>
+
+    <property name="styleSheet">
+     <string notr="true">
+font: 15pt "MS Shell Dlg 2";
+     </string>
+    </property>
+   </widget>
+
+
+   <!-- ===================================================== -->
+   <!-- SUBJECT FILTER -->
+   <!-- ===================================================== -->
+
+   <widget class="QLabel" name="subjectLabel">
+    <property name="geometry">
+     <rect>
+      <x>520</x>
+      <y>130</y>
+      <width>150</width>
+      <height>50</height>
+     </rect>
+    </property>
+
+    <property name="text">
+     <string>Subject:</string>
+    </property>
+
+    <property name="styleSheet">
+     <string notr="true">
+font: 20pt "MS Shell Dlg 2";
+     </string>
+    </property>
+
+    <property name="alignment">
+     <set>Qt::AlignVCenter</set>
+    </property>
+   </widget>
+
+
+   <widget class="QComboBox" name="subjectFilter">
+    <property name="geometry">
+     <rect>
+      <x>670</x>
+      <y>130</y>
+      <width>300</width>
+      <height>50</height>
+     </rect>
+    </property>
+
+    <property name="styleSheet">
+     <string notr="true">
+font: 15pt "MS Shell Dlg 2";
+     </string>
+    </property>
+   </widget>
+
+
+   <!-- ===================================================== -->
+   <!-- SUMMARY -->
+   <!-- ===================================================== -->
+
+   <widget class="QLabel" name="summary">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>200</y>
+      <width>1050</width>
+      <height>50</height>
+     </rect>
+    </property>
+
+    <property name="text">
+     <string>Lessons found: 0</string>
+    </property>
+
+    <property name="styleSheet">
+     <string notr="true">
+font: 16pt "MS Shell Dlg 2";
+     </string>
+    </property>
+
+    <property name="alignment">
+     <set>Qt::AlignVCenter</set>
+    </property>
+   </widget>
+
+
+   <!-- ===================================================== -->
+   <!-- TABLE -->
+   <!-- ===================================================== -->
+
+   <widget class="QTableWidget" name="table">
+
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>270</y>
+      <width>1100</width>
+      <height>470</height>
+     </rect>
+    </property>
+
+    <property name="styleSheet">
+     <string notr="true">
+font: 13pt "MS Shell Dlg 2";
+     </string>
+    </property>
+
+    <property name="alternatingRowColors">
+     <bool>true</bool>
+    </property>
+
+    <property name="editTriggers">
+     <set>QAbstractItemView::NoEditTriggers</set>
+    </property>
+
+    <property name="selectionBehavior">
+     <enum>QAbstractItemView::SelectRows</enum>
+    </property>
+
+    <property name="sortingEnabled">
+     <bool>false</bool>
+    </property>
+
+    <column>
+     <property name="text">
+      <string>Subject</string>
+     </property>
+    </column>
+
+    <column>
+     <property name="text">
+      <string>Status</string>
+     </property>
+    </column>
+
+   </widget>
+
+  </widget>
+
+
+  <!-- ===================================================== -->
+  <!-- STATUS BAR -->
+  <!-- ===================================================== -->
+
+  <widget class="QStatusBar" name="statusbar"/>
+
+ </widget>
+
+ <resources/>
+ <connections/>
+
+</ui>
