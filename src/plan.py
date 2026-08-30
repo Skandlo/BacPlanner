@@ -1,12 +1,18 @@
 import sys
 import sqlite3
 from pathlib import Path
+from ai_assistant import BacAIAssistant
 
 from PyQt5.uic import loadUi
 from PyQt5.QtWidgets import (
     QApplication,
     QMessageBox,
-    QTableWidgetItem
+    QTableWidgetItem,
+    QDialog,
+    QVBoxLayout,
+    QTextBrowser,
+    QLineEdit,
+    QPushButton
 )
 
 from database import BacDatabase
@@ -19,6 +25,115 @@ from database import BacDatabase
 BASE_DIR = Path(__file__).resolve().parent.parent
 UI_FILE = BASE_DIR / "ui" / "Plan.ui"
 DATABASE_FILE = BASE_DIR / "bac_planner.db"
+
+
+# ============================================================
+# AI CHAT DIALOG
+# ============================================================
+
+class AIChatDialog(QDialog):
+    """
+    Interactive chat dialog window allowing the user to converse 
+    with the Gemini AI assistant using a clean, formatted HTML view.
+    """
+
+    def __init__(self, ai_assistant, subject, lesson, status, parent=None):
+        super().__init__(parent)
+        self.ai_assistant = ai_assistant
+        self.subject = subject
+        self.lesson = lesson
+        self.status = status
+        
+        # Window configuration
+        self.setWindowTitle(f"Bac Chat Assistant - {subject} 🤖")
+        self.resize(650, 550)
+        
+        layout = QVBoxLayout(self)
+        
+        # Use QTextBrowser instead of QTextEdit for proper HTML/CSS rendering
+        self.chat_history = QTextBrowser()
+        self.chat_history.setOpenExternalLinks(True)
+        # Apply clean CSS styling for readability, comfortable font size, and spacing
+        self.chat_history.setStyleSheet("""
+            QTextBrowser {
+                background-color: #f8f9fa;
+                color: #212529;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-size: 14px;
+                line-height: 1.5;
+                padding: 10px;
+                border: 1px solid #ced4da;
+                border-radius: 6px;
+            }
+        """)
+        layout.addWidget(self.chat_history)
+        
+        # User input field for messaging
+        self.input_field = QLineEdit()
+        self.input_field.setPlaceholderText("Type your question here...")
+        self.input_field.setStyleSheet("font-size: 14px; padding: 6px;")
+        self.input_field.returnPressed.connect(self.send_msg)
+        layout.addWidget(self.input_field)
+        
+        # Send message button
+        self.send_btn = QPushButton("Send")
+        self.send_btn.setStyleSheet("font-size: 14px; font-weight: bold; padding: 6px;")
+        self.send_btn.clicked.connect(self.send_msg)
+        layout.addWidget(self.send_btn)
+        
+        # Internal conversation HTML storage
+        self.conversation_html = ""
+
+        # Send a context-aware initial prompt including lesson and progress status
+        initial_prompt = (
+            f"I am preparing for the Tunisian Bac exam. "
+            f"My current subject is {subject}. "
+            f"I am looking at the lesson '{self.lesson}' and my current status/level is '{self.status}'. "
+            f"Give me a strict diagnostic, analyze my current progress state for this specific lesson based on this level, "
+            f"and provide a direct action plan to master it."
+        )
+        
+        welcome_msg = self.ai_assistant.send_message(initial_prompt)
+        self.append_message("AI", welcome_msg)
+
+    def append_message(self, sender, text):
+        """Appends formatted HTML messages to the conversation display."""
+        formatted_text = text.replace("\n", "<br>")
+        
+        if sender == "You":
+            self.conversation_html += f"""
+                <div style='margin-bottom: 12px;'>
+                    <b style='color: #0d6efd;'>You:</b> 
+                    <span style='color: #333;'>{formatted_text}</span>
+                </div>
+            """
+        else:
+            self.conversation_html += f"""
+                <div style='margin-bottom: 15px; background-color: #ffffff; padding: 10px; border-left: 4px solid #198754; border-radius: 4px;'>
+                    <b style='color: #198754;'>AI Assistant:</b><br>
+                    <div style='margin-top: 5px; color: #212529;'>{formatted_text}</div>
+                </div>
+            """
+        
+        self.chat_history.setHtml(self.conversation_html)
+        self.chat_history.verticalScrollBar().setValue(
+            self.chat_history.verticalScrollBar().maximum()
+        )
+
+    def send_msg(self):
+        """
+        Sends the user input message to the AI assistant and appends 
+        both user and AI responses to the formatted chat window.
+        """
+        text = self.input_field.text().strip()
+        if not text:
+            return
+        
+        self.append_message("You", text)
+        self.input_field.clear()
+        
+        response = self.ai_assistant.send_message(text)
+        self.append_message("AI", response)
 
 
 # ============================================================
@@ -35,6 +150,9 @@ class PlanWindow:
         # Initialize database
         self.db = BacDatabase(str(DATABASE_FILE))
 
+        # Initialize AI Assistant
+        self.ai_assistant = BacAIAssistant()
+
         # ----------------------------------------------------
         # Window
         # ----------------------------------------------------
@@ -45,31 +163,38 @@ class PlanWindow:
         self.window.label_2.setText("Lesson:")
         self.window.label_3.setText("Status:")
 
-        # Buttons
+        # Buttons setup
         self.window.af.setText("Refresh")
         self.window.updateStatusButton.setText("Update Status")
 
-        # Old Add button not needed
-        self.window.aj.hide()
+        # Configure the single clean AI Assistant button
+        self.window.aj.setText("🤖 Ask AI")
+        self.window.aj.show()
+        self.window.aj.clicked.connect(self.ask_ai_for_advice)
+
+        if hasattr(self.window, "aiButton"):
+            self.window.aiButton.hide()
 
         # ----------------------------------------------------
-        # Table
+        # Table (Fixed: set column count to 2 so headers show properly)
         # ----------------------------------------------------
 
+        self.window.t1.setColumnCount(2)
         self.window.t1.setHorizontalHeaderLabels([
             "Lesson",
             "Status"
         ])
 
         # ----------------------------------------------------
-        # Status list
+        # Status list in English with "Not yet" included
         # ----------------------------------------------------
 
         self.statuses = [
-            "⚪ Not Started",
-            "🟡 In Progress",
-            "🟢 Completed",
-            "🔵 Review"
+            "⚪ Not yet",
+            "🔴 Poor",
+            "🟡 Average",
+            "🟢 Good",
+            "⭐ Excellent"
         ]
 
         self.window.cb2.clear()
@@ -97,11 +222,6 @@ class PlanWindow:
             self.cours_selectionne
         )
 
-        # IMPORTANT:
-        # Status selector should NOT automatically update
-        # the database when changed.
-        #
-        # The user must press "Update Status".
         self.window.updateStatusButton.clicked.connect(
             self.update_status
         )
@@ -118,7 +238,7 @@ class PlanWindow:
     # ========================================================
 
     def charger_matieres(self):
-
+        """Loads all available subjects from the database into the subject dropdown combo box."""
         self.window.cb.clear()
 
         subjects = self.db.get_all_subjects()
@@ -135,7 +255,7 @@ class PlanWindow:
     # ========================================================
 
     def charger_cours(self):
-
+        """Loads lessons corresponding to the currently selected subject into the lesson dropdown."""
         subject = self.window.cb.currentText().strip()
 
         self.window.cr.blockSignals(True)
@@ -169,7 +289,6 @@ class PlanWindow:
 
         self.window.cr.blockSignals(False)
 
-        # Display the status of the first lesson
         self.cours_selectionne()
 
     # ========================================================
@@ -177,7 +296,7 @@ class PlanWindow:
     # ========================================================
 
     def subject_changed(self):
-
+        """Handles events triggered when a different subject is chosen from the combo box."""
         self.charger_cours()
         self.afficher()
 
@@ -186,7 +305,7 @@ class PlanWindow:
     # ========================================================
 
     def cours_selectionne(self):
-
+        """Synchronizes the status dropdown selection with the currently selected lesson's saved progress state."""
         index = self.window.cr.currentIndex()
 
         if index < 0:
@@ -195,7 +314,7 @@ class PlanWindow:
         status = self.window.cr.itemData(index)
 
         if not status:
-            status = "⚪ Not Started"
+            status = "⚪ Not yet"
 
         status_index = self.window.cb2.findText(
             status
@@ -216,14 +335,13 @@ class PlanWindow:
     # ========================================================
 
     def update_status(self):
-
+        """Commits the newly selected progress status of a lesson to the database."""
         subject = self.window.cb.currentText().strip()
 
         lesson = self.window.cr.currentText().strip()
 
         status = self.window.cb2.currentText()
 
-        # Check subject
         if not subject:
 
             QMessageBox.warning(
@@ -234,7 +352,6 @@ class PlanWindow:
 
             return
 
-        # Check lesson
         if not lesson:
 
             QMessageBox.warning(
@@ -245,7 +362,6 @@ class PlanWindow:
 
             return
 
-        # Update database
         try:
 
             self.db.update_lesson_status(
@@ -264,7 +380,6 @@ class PlanWindow:
 
             return
 
-        # Update the status stored in the lesson combo box
         index = self.window.cr.currentIndex()
 
         if index >= 0:
@@ -274,10 +389,8 @@ class PlanWindow:
                 status
             )
 
-        # Refresh table
         self.afficher()
 
-        # Confirmation
         QMessageBox.information(
             self.window,
             "Status Updated",
@@ -291,7 +404,7 @@ class PlanWindow:
     # ========================================================
 
     def afficher(self):
-
+        """Populates and structures the main overview table with all lesson statuses for the active subject."""
         subject = self.window.cb.currentText().strip()
 
         self.window.t1.setRowCount(0)
@@ -315,10 +428,6 @@ class PlanWindow:
 
             return
 
-        # ----------------------------------------------------
-        # Fill table
-        # ----------------------------------------------------
-
         for row_number, (lesson, status) in enumerate(lessons):
 
             self.window.t1.insertRow(row_number)
@@ -335,10 +444,6 @@ class PlanWindow:
                 QTableWidgetItem(status)
             )
 
-        # ----------------------------------------------------
-        # Resize columns
-        # ----------------------------------------------------
-
         self.window.t1.resizeColumnsToContents()
 
         self.window.t1.setColumnWidth(
@@ -350,11 +455,38 @@ class PlanWindow:
         )
 
     # ========================================================
+    # AI STUDY ADVICE
+    # ========================================================
+
+    def ask_ai_for_advice(self):
+        """Opens the interactive AI chat assistant dialog window passing the current subject, lesson, and status context."""
+        subject = self.window.cb.currentText().strip()
+        lesson = self.window.cr.currentText().strip()
+        status = self.window.cb2.currentText().strip()
+
+        if not subject:
+            QMessageBox.warning(
+                self.window,
+                "Missing Subject",
+                "Please select a subject first."
+            )
+            return
+
+        if not lesson:
+            lesson = "General Course"
+
+        if not status:
+            status = "⚪ Not yet"
+
+        dialog = AIChatDialog(self.ai_assistant, subject, lesson, status, self.window)
+        dialog.exec_()
+
+    # ========================================================
     # SHOW WINDOW
     # ========================================================
 
     def show(self):
-
+        """Displays the main application user interface window."""
         self.window.show()
 
 
@@ -363,7 +495,7 @@ class PlanWindow:
 # ============================================================
 
 def main():
-
+    """Application entry point initializing the Qt Event Loop and main window."""
     app = QApplication(sys.argv)
 
     window = PlanWindow()

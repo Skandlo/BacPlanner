@@ -41,7 +41,7 @@ class BacDatabase:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     subject_name TEXT,
                     lesson_title TEXT,
-                    status TEXT DEFAULT '⚪ Not Started'
+                    status TEXT DEFAULT '⚪ Not yet'
                 )
             """)
 
@@ -367,7 +367,7 @@ class BacDatabase:
                     (
                         subject,
                         lesson,
-                        "⚪ Not Started"
+                        "⚪ Not yet"
                     )
                     for subject, lesson in lessons_data
                 ])
@@ -547,6 +547,7 @@ class BacDatabase:
             )
 
         return 0.0
+
     # ========================================================
     # GET LESSONS FILTERED BY STATUS
     # ========================================================
@@ -584,7 +585,6 @@ class BacDatabase:
 
             return cursor.fetchall()
 
-
     # ========================================================
     # GET STATUS COUNTS
     # ========================================================
@@ -602,6 +602,7 @@ class BacDatabase:
             """)
 
             return dict(cursor.fetchall())
+
 
 # ============================================================
 # TEST / EXAMPLE USAGE

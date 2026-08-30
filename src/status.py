@@ -51,14 +51,15 @@ class StatusWindow:
         )
 
         # ----------------------------------------------------
-        # Statuses
+        # Statuses (Updated with "Not yet" and English list)
         # ----------------------------------------------------
 
         self.statuses = [
-            "⚪ Not Started",
-            "🟡 In Progress",
-            "🟢 Completed",
-            "🔵 Review"
+            "⚪ Not yet",
+            "🔴 Poor",
+            "🟡 Average",
+            "🟢 Good",
+            "⭐ Excellent"
         ]
 
         # ----------------------------------------------------
@@ -191,7 +192,7 @@ class StatusWindow:
 
         # ----------------------------------------------------
         # Fill table
-        #
+        # 
         # Database returns:
         # subject_name, lesson_title, status
         #
