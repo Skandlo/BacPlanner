@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-# تحديد مسار ملف الإعدادات بجانب التطبيق
 CONFIG_FILE = Path(__file__).resolve().parent.parent / "config.json"
 
 def load_api_key():
