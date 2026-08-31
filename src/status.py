@@ -51,7 +51,7 @@ class StatusWindow:
         )
 
         # ----------------------------------------------------
-        # Statuses (Updated with "Not yet" and English list)
+        # Statuses
         # ----------------------------------------------------
 
         self.statuses = [
@@ -61,6 +61,12 @@ class StatusWindow:
             "🟢 Good",
             "⭐ Excellent"
         ]
+
+        # ----------------------------------------------------
+        # Configure table
+        # ----------------------------------------------------
+
+        self.configure_table()
 
         # ----------------------------------------------------
         # Load filters
@@ -86,6 +92,38 @@ class StatusWindow:
         # ----------------------------------------------------
 
         self.afficher()
+
+    # ========================================================
+    # CONFIGURE TABLE
+    # ========================================================
+
+    def configure_table(self):
+        """
+        Configures the table to display:
+
+        Subject | Course | Status
+        """
+
+        self.window.table.setColumnCount(3)
+
+        self.window.table.setHorizontalHeaderLabels([
+            "Subject",
+            "Course",
+            "Status"
+        ])
+
+        # Prevent editing directly inside the table
+        self.window.table.setEditTriggers(
+            self.window.table.NoEditTriggers
+        )
+
+        # Select complete rows
+        self.window.table.setSelectionBehavior(
+            self.window.table.SelectRows
+        )
+
+        # Hide vertical row numbers
+        self.window.table.verticalHeader().setVisible(False)
 
     # ========================================================
     # LOAD STATUS FILTER
@@ -115,12 +153,22 @@ class StatusWindow:
             "All Subjects"
         )
 
-        subjects = self.db.get_all_subjects()
+        try:
 
-        for subject_name, coefficient in subjects:
+            subjects = self.db.get_all_subjects()
 
-            self.window.subjectFilter.addItem(
-                subject_name
+            for subject_name, coefficient in subjects:
+
+                self.window.subjectFilter.addItem(
+                    subject_name
+                )
+
+        except sqlite3.Error as error:
+
+            QMessageBox.critical(
+                self.window,
+                "Database Error",
+                f"Unable to load subjects.\n\n{error}"
             )
 
     # ========================================================
@@ -132,44 +180,61 @@ class StatusWindow:
         self.afficher()
 
     # ========================================================
+    # GET SELECTED STATUS
+    # ========================================================
+
+    def get_selected_status(self):
+        """
+        Returns the selected status.
+
+        None means all statuses.
+        """
+
+        index = self.window.statusFilter.currentIndex()
+
+        if index <= 0:
+            return None
+
+        return self.window.statusFilter.currentText()
+
+    # ========================================================
+    # GET SELECTED SUBJECT
+    # ========================================================
+
+    def get_selected_subject(self):
+        """
+        Returns the selected subject.
+
+        None means all subjects.
+        """
+
+        index = self.window.subjectFilter.currentIndex()
+
+        if index <= 0:
+            return None
+
+        return self.window.subjectFilter.currentText()
+
+    # ========================================================
     # DISPLAY
     # ========================================================
 
     def afficher(self):
 
         # ----------------------------------------------------
-        # Get selected status
+        # Get filters
         # ----------------------------------------------------
 
-        status_index = (
-            self.window.statusFilter.currentIndex()
-        )
-
-        if status_index <= 0:
-            status = None
-        else:
-            status = self.window.statusFilter.currentText()
+        status = self.get_selected_status()
+        subject = self.get_selected_subject()
 
         # ----------------------------------------------------
-        # Get selected subject
-        # ----------------------------------------------------
-
-        subject_index = (
-            self.window.subjectFilter.currentIndex()
-        )
-
-        if subject_index <= 0:
-            subject = None
-        else:
-            subject = self.window.subjectFilter.currentText()
-
-        # ----------------------------------------------------
-        # Get lessons from database
+        # Get filtered courses
         # ----------------------------------------------------
 
         try:
 
-            lessons = self.db.get_lessons_by_status(
+            courses = self.db.get_lessons_by_status(
                 status=status,
                 subject=subject
             )
@@ -179,7 +244,7 @@ class StatusWindow:
             QMessageBox.critical(
                 self.window,
                 "Database Error",
-                f"Unable to load status.\n\n{error}"
+                f"Unable to load courses.\n\n{error}"
             )
 
             return
@@ -192,36 +257,60 @@ class StatusWindow:
 
         # ----------------------------------------------------
         # Fill table
-        # 
-        # Database returns:
-        # subject_name, lesson_title, status
         #
-        # We ignore lesson_title because the UI
-        # no longer displays it.
+        # Database returns:
+        #
+        # subject_name
+        # lesson_title
+        # status
+        #
+        # We display all three.
         # ----------------------------------------------------
 
         for row_number, (
             subject_name,
-            lesson,
+            lesson_title,
             lesson_status
-        ) in enumerate(lessons):
+        ) in enumerate(courses):
 
             self.window.table.insertRow(
                 row_number
             )
 
+            # ------------------------------------------------
             # Subject
+            # ------------------------------------------------
+
             self.window.table.setItem(
                 row_number,
                 0,
-                QTableWidgetItem(subject_name)
+                QTableWidgetItem(
+                    subject_name
+                )
             )
 
-            # Status
+            # ------------------------------------------------
+            # Course
+            # ------------------------------------------------
+
             self.window.table.setItem(
                 row_number,
                 1,
-                QTableWidgetItem(lesson_status)
+                QTableWidgetItem(
+                    lesson_title
+                )
+            )
+
+            # ------------------------------------------------
+            # Status
+            # ------------------------------------------------
+
+            self.window.table.setItem(
+                row_number,
+                2,
+                QTableWidgetItem(
+                    lesson_status
+                )
             )
 
         # ----------------------------------------------------
@@ -235,16 +324,25 @@ class StatusWindow:
             0,
             max(
                 self.window.table.columnWidth(0),
-                300
+                200
+            )
+        )
+
+        # Course
+        self.window.table.setColumnWidth(
+            1,
+            max(
+                self.window.table.columnWidth(1),
+                550
             )
         )
 
         # Status
         self.window.table.setColumnWidth(
-            1,
+            2,
             max(
-                self.window.table.columnWidth(1),
-                300
+                self.window.table.columnWidth(2),
+                180
             )
         )
 
@@ -253,11 +351,11 @@ class StatusWindow:
         # ----------------------------------------------------
 
         self.window.summary.setText(
-            f"Lessons found: {len(lessons)}"
+            f"Courses found: {len(courses)}"
         )
 
     # ========================================================
-    # SHOW
+    # SHOW WINDOW
     # ========================================================
 
     def show(self):
